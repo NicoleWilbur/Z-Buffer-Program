@@ -1,0 +1,116 @@
+<!doctype html>
+<html>
+   <body>
+     <canvas width="500" height="500" id="output"></canvas>
+      <script>
+      const ctx = document.getElementById("output").getContext('2d');
+      const screenWidth = 500;
+      const screenHeight = 500;
+
+      // one value for each pixel in our screen
+      const depthBuffer = new Array(screenWidth * screenHeight);
+
+      // create buffer for color output
+      const numChannels = 3; // R G B
+      const colorBuffer = new Array(screenWidth * screenHeight * numChannels);
+
+      /**
+       * Represents a 2D Shape
+       * @class
+       */
+      class Shape {
+        /** @member {Object} position of the Shape */
+        position;
+        /** @member {Object} color of the Shape given in RGB */
+        color;
+
+        constructor (props) {
+          this.position = props.position;
+          this.color = props.color;
+        }
+
+         pointInShape(px,py,Shape){
+
+            var v0 = [Shape.position.cx - Shape.position.ax, Shape.position.cy - Shape.position.ay];
+            var v1 = [Shape.position.bx - Shape.position.ax, Shape.position.by - Shape.position.ay];
+            var v2 = [px - Shape.position.ax, py - Shape.position.ay];
+
+            var dot00 = (v0[0]*v0[0]) + (v0[1]*v0[1]);
+            var dot01 = (v0[0]*v1[0]) + (v0[1]*v1[1]);
+            var dot02 = (v0[0]*v2[0]) + (v0[1]*v2[1]);
+            var dot11 = (v1[0]*v1[0]) + (v1[1]*v1[1]);
+            var dot12 = (v1[0]*v2[0]) + (v1[1]*v2[1]);
+
+            var invDenom = 1/ (dot00 * dot11 - dot01 * dot01);
+
+            var u = (dot11 * dot02 - dot01 * dot12) * invDenom;
+            var v = (dot00 * dot12 - dot01 * dot02) * invDenom;
+
+            return ((u >= 0) && (v >= 0) && (u + v < 1));
+            }
+      //  pointInShape (px,py) {
+        //  return this.position.x < px && this.position.x + this.zdepth.width > px
+        //       && this.position.y < py && this.position.y + this.zdepth.height > py;
+        // }
+      }
+      const Shapes = [
+        // green triangle
+        new Shape({
+          position: {ax: 0, ay: 1, bx: -1, by: -1, cx: 1, cy: -1, z: 1},
+          color: {r: 0, g: 255, b:0}
+        }),
+        // blue triangle
+        new Shape({
+          position: {ax: -1, ay: -1, bx: -0, by: -1, cx: -1, cy: -0.5, z: 2},
+          color: {r: 0, g: 0, b:255}
+        }),
+        // red triangle
+        new Shape({
+          position: {ax: 1, ay: -1, bx: 0, by: -1, cx: 1, cy: -0.5, z: 3},
+          color: {r: 255, g: 0, b: 0}
+        })
+      ];
+
+      function draw () {
+        // clear depth buffer of previous frame
+        depthBuffer.fill(10);
+        for(const Shape of Shapes) {
+          for(let x = 0; x < screenWidth; x++) {
+            for(let y = 0; y < screenHeight; y++) {
+              // check if our pixel is within the Shape
+              if (Shape.pointInShape(x,y,Shape)) {
+                // check if this pixel of our Shape is covered by something else
+                // compare depth value in depthbuffer against Shape position
+
+                if (depthBuffer[x + y * screenWidth] < Shape.position.z) {
+                  // something is already closer to the viewpoint that our current primitive, don't draw this pixel:
+                  continue;
+                  if (depthBuffer[x + y * screenWidth] < Shape.position.z + Math.sin((x+y))*Math.cos(x)*5) {
+                    continue;
+                  }
+                }
+                // we passed the depth test, put our current depth value in the z-buffer
+                depthBuffer[x + y * screenWidth] = Shape.position.z;
+                // put the color in the color buffer, channel by channel
+                colorBuffer[(x + y * screenWidth)*numChannels + 0] = Shape.color.r;
+                colorBuffer[(x + y * screenWidth)*numChannels + 1] = Shape.color.g;
+                colorBuffer[(x + y * screenWidth)*numChannels + 2] = Shape.color.b;
+              }
+            }
+          }
+        }
+
+        // convert to rgba for presentation
+        const oBuffer = new Uint8ClampedArray(screenWidth*screenHeight*4);
+        for (let i=0,o=0; i < colorBuffer.length; i+=3,o+=4) {
+        oBuffer[o]=colorBuffer[i];
+        oBuffer[o+1]=colorBuffer[i+1];
+        oBuffer[o+2]=colorBuffer[i+2];
+        oBuffer[o+3]=255;
+        }
+        ctx.putImageData(new ImageData(oBuffer, screenWidth, screenHeight),0,0);
+      }
+      draw();
+      </script>
+   </body>
+</html>
