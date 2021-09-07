@@ -16,10 +16,23 @@
     const colorBuffer = new Array(screenWidth * screenHeight * numChannels);
 
     /**
+     * The cross product of two 2-dimensional vectors.
+     * This is positive if @param v is rotated counter-clockwise with respect to @param u,
+     * negative if @param v is rotated clockwise with respect to @param u,
+     * zero if @param u and @param v are parallel.
+     * @param {number[]} u An array of two coordinates.
+     * @param {number[]} v An array of two coordinates.
+     * @returns u &times; v.
+     */
+    function cross(u, v) {
+      return u[0] * v[1] - u[1] * v[0];
+    }
+
+    /**
      * Represents a 2D Shape
      * @class
      */
-    class Shape {
+    class Triangle {
       /** @member {Object} position of the Shape */
       position;
       /** @member {Object} color of the Shape given in RGB */
@@ -30,43 +43,39 @@
         this.color = props.color;
       }
 
-      pointInShape(px, py) {
+      /**
+       * Test if the given point lies inside the triangle.
+       * @param {number} px x-coordinate of the given point.
+       * @param {number} py y-coordinate of the given point.
+       * @returns true if the point lies inside the triangle, false otherwise.
+       */
+      contains(px, py) {
 
-        var v0 = [this.position.cx - this.position.ax, this.position.cy - this.position.ay];
-        var v1 = [this.position.bx - this.position.ax, this.position.by - this.position.ay];
-        var v2 = [px - this.position.ax, py - this.position.ay];
-
-        var dot00 = (v0[0] * v0[0]) + (v0[1] * v0[1]);
-        var dot01 = (v0[0] * v1[0]) + (v0[1] * v1[1]);
-        var dot02 = (v0[0] * v2[0]) + (v0[1] * v2[1]);
-        var dot11 = (v1[0] * v1[0]) + (v1[1] * v1[1]);
-        var dot12 = (v1[0] * v2[0]) + (v1[1] * v2[1]);
-
-        var invDenom = 1 / (dot00 * dot11 - dot01 * dot01);
-
-        var u = (dot11 * dot02 - dot01 * dot12) * invDenom;
-        var v = (dot00 * dot12 - dot01 * dot02) * invDenom;
-
-        return ((u >= 0) && (v >= 0) && (u + v < 1));
+        const { ax, ay, bx, by, cx, cy } = this.position;
+        return (
+          0 < cross([cx - bx, cy - by], [px - ax, py - ay]) &&
+          0 < cross([ax - cx, ay - cy], [px - bx, py - by]) &&
+          0 < cross([bx - ax, by - ay], [px - cx, py - cy])
+        );
       }
     }
 
     const shapes = [
       // green triangle
-      new Shape({
-        position: { ax: 0, ay: 1, bx: -1, by: -1, cx: 1, cy: -1, z: 0 },
+      new Triangle({
+        position: { ax: 80, ay: 30, bx: 80, by: 180, cx: 90, cy: 180, z: 5 },
         color: { r: 0, g: 255, b: 0 }
       }),
       // blue triangle
-      new Shape({
-        position: { ax: -1, ay: -1, bx: 0, by: -1, cx: -1, cy: -0.5, z: 1 },
+      new Triangle({
+        position: { ax: 70, ay: 70, bx: 70, by: 110, cx: 120, cy: 110, z: 8 },
         color: { r: 0, g: 0, b: 255 }
       }),
       // red triangle
-      new Shape({
-        position: { ax: 1, ay: -1, bx: 0, by: -1, cx: 1, cy: -0.5, z: 2 },
+      new Triangle({
+        position: { ax: 50, ay: 50, bx: 50, by: 100, cx: 200, cy: 100, z: 10 },
         color: { r: 255, g: 0, b: 0 }
-      })
+      }),
     ];
 
     function draw() {
@@ -76,11 +85,11 @@
         for (let x = 0; x < screenWidth; x++) {
           for (let y = 0; y < screenHeight; y++) {
             // check if our pixel is within the Shape
-            if (shape.pointInShape(x, y)) {
+            if (shape.contains(x, y)) {
               // check if this pixel of our Shape is covered by something else
               // compare depth value in depthbuffer against Shape position
-
               if (depthBuffer[x + y * screenWidth] < shape.position.z) {
+                // something is already closer to the viewpoint that our current primitive, don't draw this pixel:
                 continue;
               }
               // we passed the depth test, put our current depth value in the z-buffer
@@ -104,6 +113,7 @@
       }
       ctx.putImageData(new ImageData(oBuffer, screenWidth, screenHeight), 0, 0);
     }
+
     draw();
   </script>
 </body>
